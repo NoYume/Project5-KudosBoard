@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Plus } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -11,16 +11,47 @@ import { categoryLabel } from '@/data/categories'
 
 export default function BoardDetailPage() {
   const { boardId } = useParams()
-  const { getBoard, getCards, createCard, upvoteCard, deleteCard, togglePin, addComment } =
+  const { fetchBoard, getBoard, getCards, createCard, upvoteCard, deleteCard, togglePin, addComment } =
     useBoards()
 
   const [isCardModalOpen, setIsCardModalOpen] = useState(false)
   const [commentsCardId, setCommentsCardId] = useState(null)
+  // Tracks the id of the board that finished loading, plus any fetch error.
+  // Loading state is derived from these so we never setState synchronously
+  // inside the effect (which would cause cascading renders).
+  const [fetchedId, setFetchedId] = useState(null)
+  const [fetchError, setFetchError] = useState(false)
+
+  // Fetch the board (with its cards + comments) from the backend on mount /
+  // whenever the boardId in the URL changes.
+  useEffect(() => {
+    let active = true
+    fetchBoard(boardId)
+      .then(() => {
+        if (active) {
+          setFetchedId(Number(boardId))
+          setFetchError(false)
+        }
+      })
+      .catch(() => active && setFetchError(true))
+    return () => {
+      active = false
+    }
+  }, [boardId, fetchBoard])
 
   const board = getBoard(boardId)
   const cards = getCards(boardId)
+  const isLoading = !fetchError && fetchedId !== Number(boardId)
 
-  if (!board) {
+  if (isLoading) {
+    return (
+      <div className="mx-auto max-w-6xl px-4 py-20 text-center">
+        <p className="text-lg font-medium text-muted-foreground">Loading board…</p>
+      </div>
+    )
+  }
+
+  if (fetchError || !board) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-20 text-center">
         <p className="text-lg font-medium">Board not found.</p>

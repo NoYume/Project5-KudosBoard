@@ -1,39 +1,68 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react'
-import { seedBoards, seedCards } from '@/data/seed'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import * as api from '@/lib/api'
 
 const BoardsContext = createContext(null)
 
-// Monotonic id generator for in-memory records (frontend-only milestone).
-// Replaced by backend-assigned ids once the API is connected (Milestone 3).
-let nextId = 100000
-const genId = () => ++nextId
-
 export function BoardsProvider({ children }) {
-  const [boards, setBoards] = useState(seedBoards)
+  const [boards, setBoards] = useState([])
   // Cards are keyed by boardId so a board's cards are cheap to look up.
-  const [cardsByBoard, setCardsByBoard] = useState(seedCards)
+  const [cardsByBoard, setCardsByBoard] = useState({})
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  const createBoard = useCallback(({ title, category, imageUrl, author }) => {
-    const board = {
-      id: genId(),
+  // Load the board list once on mount.
+  useEffect(() => {
+    let active = true
+    api
+      .listBoards()
+      .then((data) => {
+        if (active) setBoards(data)
+      })
+      .catch((err) => {
+        if (active) setError(err.message)
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const createBoard = useCallback(async ({ title, category, imageUrl, author }) => {
+    const board = await api.createBoard({
       title,
       category,
       imageUrl,
       author: author?.trim() ? author.trim() : null,
-      createdAt: new Date().toISOString(),
-    }
+    })
     setBoards((prev) => [board, ...prev])
     setCardsByBoard((prev) => ({ ...prev, [board.id]: [] }))
     return board
   }, [])
 
-  const deleteBoard = useCallback((boardId) => {
+  const deleteBoard = useCallback(async (boardId) => {
+    await api.deleteBoard(boardId)
     setBoards((prev) => prev.filter((b) => b.id !== boardId))
     setCardsByBoard((prev) => {
       const next = { ...prev }
-      delete next[boardId] // cascade-delete the board's cards
+      delete next[boardId] // cascade-delete the board's cards (mirrors the backend)
       return next
     })
+  }, [])
+
+  // Fetch a single board with its cards (used by the detail page). Upserts the
+  // board into the list so getBoard/getCards can read it synchronously.
+  const fetchBoard = useCallback(async (boardId) => {
+    const id = Number(boardId)
+    const board = await api.getBoard(id)
+    const { cards = [], ...boardMeta } = board
+    setBoards((prev) => {
+      const exists = prev.some((b) => b.id === id)
+      return exists ? prev.map((b) => (b.id === id ? boardMeta : b)) : [boardMeta, ...prev]
+    })
+    setCardsByBoard((prev) => ({ ...prev, [id]: cards }))
+    return board
   }, [])
 
   const getBoard = useCallback(
@@ -46,35 +75,36 @@ export function BoardsProvider({ children }) {
     [cardsByBoard],
   )
 
-  const createCard = useCallback((boardId, { message, gifUrl, author }) => {
+  const createCard = useCallback(async (boardId, { message, gifUrl, author }) => {
     const id = Number(boardId)
-    const card = {
-      id: genId(),
-      boardId: id,
+    const card = await api.createCard(id, {
       message,
       gifUrl,
       author: author?.trim() ? author.trim() : null,
-      upvotes: 0,
-      pinned: false,
-      pinnedAt: null,
-      createdAt: new Date().toISOString(),
-      comments: [],
-    }
+    })
     setCardsByBoard((prev) => ({ ...prev, [id]: [...(prev[id] ?? []), card] }))
     return card
   }, [])
 
-  const upvoteCard = useCallback((boardId, cardId) => {
+  // Replace a single card in state with the server's version.
+  const replaceCard = useCallback((boardId, updated) => {
     const id = Number(boardId)
     setCardsByBoard((prev) => ({
       ...prev,
-      [id]: (prev[id] ?? []).map((c) =>
-        c.id === cardId ? { ...c, upvotes: c.upvotes + 1 } : c,
-      ),
+      [id]: (prev[id] ?? []).map((c) => (c.id === updated.id ? updated : c)),
     }))
   }, [])
 
-  const deleteCard = useCallback((boardId, cardId) => {
+  const upvoteCard = useCallback(
+    async (boardId, cardId) => {
+      const updated = await api.upvoteCard(cardId)
+      replaceCard(boardId, updated)
+    },
+    [replaceCard],
+  )
+
+  const deleteCard = useCallback(async (boardId, cardId) => {
+    await api.deleteCard(cardId)
     const id = Number(boardId)
     setCardsByBoard((prev) => ({
       ...prev,
@@ -82,32 +112,24 @@ export function BoardsProvider({ children }) {
     }))
   }, [])
 
-  const togglePin = useCallback((boardId, cardId) => {
-    const id = Number(boardId)
-    setCardsByBoard((prev) => ({
-      ...prev,
-      [id]: (prev[id] ?? []).map((c) =>
-        c.id === cardId
-          ? c.pinned
-            ? { ...c, pinned: false, pinnedAt: null }
-            : { ...c, pinned: true, pinnedAt: new Date().toISOString() }
-          : c,
-      ),
-    }))
-  }, [])
+  const togglePin = useCallback(
+    async (boardId, cardId) => {
+      const updated = await api.togglePin(cardId)
+      replaceCard(boardId, updated)
+    },
+    [replaceCard],
+  )
 
-  const addComment = useCallback((boardId, cardId, { message, author }) => {
-    const id = Number(boardId)
-    const comment = {
-      id: genId(),
+  const addComment = useCallback(async (boardId, cardId, { message, author }) => {
+    const comment = await api.addComment(cardId, {
       message,
       author: author?.trim() ? author.trim() : null,
-      createdAt: new Date().toISOString(),
-    }
+    })
+    const id = Number(boardId)
     setCardsByBoard((prev) => ({
       ...prev,
       [id]: (prev[id] ?? []).map((c) =>
-        c.id === cardId ? { ...c, comments: [...c.comments, comment] } : c,
+        c.id === cardId ? { ...c, comments: [...(c.comments ?? []), comment] } : c,
       ),
     }))
     return comment
@@ -116,8 +138,11 @@ export function BoardsProvider({ children }) {
   const value = useMemo(
     () => ({
       boards,
+      loading,
+      error,
       createBoard,
       deleteBoard,
+      fetchBoard,
       getBoard,
       getCards,
       createCard,
@@ -128,8 +153,11 @@ export function BoardsProvider({ children }) {
     }),
     [
       boards,
+      loading,
+      error,
       createBoard,
       deleteBoard,
+      fetchBoard,
       getBoard,
       getCards,
       createCard,

@@ -42,7 +42,7 @@ async function getBoardById(req, res) {
     const id = Number(req.params.id);
     const board = await prisma.board.findUnique({
       where: { id },
-      include: { cards: true },
+      include: { cards: { include: { comments: true } } },
     });
     if (!board) {
       return res.status(404).json({ error: "Board not found" });

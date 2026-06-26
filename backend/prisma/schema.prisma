@@ -23,12 +23,24 @@ model Board {
 }
 
 model Card {
-  id        Int      @id @default(autoincrement())
+  id        Int       @id @default(autoincrement())
   message   String
   gifUrl    String
   author    String?
-  upvotes   Int      @default(0)
+  upvotes   Int       @default(0)
+  pinned    Boolean   @default(false)
+  pinnedAt  DateTime?
   boardId   Int
-  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  board     Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  comments  Comment[]
+  createdAt DateTime  @default(now())
+}
+
+model Comment {
+  id        Int      @id @default(autoincrement())
+  message   String
+  author    String?
+  cardId    Int
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 }
