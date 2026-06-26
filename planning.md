@@ -123,8 +123,9 @@ App
 
 > Add these only when adopting the corresponding stretch feature.
 
-- **`GiphySearch`** — used inside `CreateCardModal`; searches the GIPHY API and lets the user pick a gif.
-  Props: `onSelect(gifUrl)`. State: search query, results, selected gif.
+- **`GiphySearch`** — **now a required component** (live GIPHY search was built in Milestone 1, not deferred).
+  Used inside `CreateCardModal`; searches the GIPHY API and lets the user pick a gif.
+  Props: `selectedGif`, `onSelect(gifUrl)`. State: search query, results, request status.
 - **`CommentsModal`** — pop-up showing a card's message, gif, author, and its comments, plus a form to add
   a comment. Props: `card`, `comments`, `isOpen`, `onClose()`, `onAddComment(body, author)`.
 - **`ThemeToggle`** — light/dark toggle shown in the Header. Props: `theme`, `onToggle()`.
@@ -288,13 +289,24 @@ App
 
 ## Decisions Log — Frontend (Milestone 1)
 
-> Fill in after building the frontend components.
-
-- **Component that diverged most from the original spec:** _[...]_
-  **What I changed:** _[...]_
-- **State variable I needed that wasn't in the original spec:** _[...]_
-  **Which component owns it:** _[...]_
-- **Prop that didn't match the API response shape and required adjustment:** _[...]_
+- **Component that diverged most from the original spec:** the data ownership of `boards` and `cards`.
+  **What I changed:** the spec had `boards` owned by `BoardsPage` and `cards`/`currentBoard` owned by
+  `BoardDetailPage`. Because Milestone 1 is frontend-only with in-memory data, per-page ownership would lose
+  created boards/cards on every route change. I lifted all board/card data and its mutators into a
+  **`BoardsProvider` context** (`src/context/BoardsContext.jsx`) above the router, and the pages now read from
+  it. This is the seam that swaps cleanly for `fetch` calls in Milestone 3.
+- **State variable I needed that wasn't in the original spec:** `theme` ended up in a dedicated
+  **`ThemeProvider`** (`src/context/ThemeContext.jsx`) rather than living loosely in `App`, so the toggle and
+  its `localStorage` persistence are reusable from any component (Header) and survive navigation.
+  **Which component owns it:** `ThemeProvider` (wraps the whole app in `App.jsx`).
+- **Prop that didn't match the API response shape and required adjustment:** none yet — there is no backend in
+  Milestone 1. Two notes for parity: `GiphySearch` was promoted from a stretch component to **required** (live
+  GIPHY search was built now), and `comments` are stored **inline on each card object** in the frontend model
+  (`card.comments`) rather than as a separate top-level collection; this will be reconciled against the
+  `Comment` model / endpoints when the backend lands.
+- **Build/styling note:** **UI Thing** (named in the spec/CLAUDE.md) is a Vue/Nuxt library and cannot run in
+  React, so its "Blog page 2 / Blog post card 3" design was recreated with **shadcn/ui + Tailwind v4** — the
+  React port of the same design system. No backend code was written; the only network call is to GIPHY.
 
 ---
 
