@@ -2,7 +2,7 @@
 
 ## Unit Assignment: Kudos Board
 
-Submitted by: **Della Lee**
+Submitted by: **Della Lee, Daniel Lam, Miguel Cuevas, Audrey Dequito**
 
 Deployed Application (optional): [Kudos Board Deployed Site](ADD_LINK_HERE)
 
