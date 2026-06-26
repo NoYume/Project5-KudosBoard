@@ -65,9 +65,11 @@ const boards = [
 ];
 
 async function main() {
-  // Start clean so re-seeding is idempotent.
-  await prisma.card.deleteMany();
-  await prisma.board.deleteMany();
+  // Start clean so re-seeding is idempotent. TRUNCATE ... RESTART IDENTITY
+  // also resets the autoincrement sequences so IDs start back at 1.
+  await prisma.$executeRawUnsafe(
+    'TRUNCATE "Card", "Board" RESTART IDENTITY CASCADE;'
+  );
 
   for (const { cards, ...board } of boards) {
     await prisma.board.create({
