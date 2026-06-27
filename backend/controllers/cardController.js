@@ -36,8 +36,16 @@ async function createCard(req, res) {
       return res.status(404).json({ error: "Board not found" });
     }
 
+    // Cards are guest-friendly: attach an owner only when logged in (set by
+    // the attachUser middleware), otherwise userId stays null.
     const card = await prisma.card.create({
-      data: { message, gifUrl, author: author || null, boardId },
+      data: {
+        message,
+        gifUrl,
+        author: author || null,
+        boardId,
+        userId: req.userId || null,
+      },
       include: { comments: true },
     });
     res.status(201).json(card);
