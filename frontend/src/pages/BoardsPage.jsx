@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import SearchBar from '@/components/boards/SearchBar'
@@ -6,10 +7,13 @@ import CategoryFilter from '@/components/boards/CategoryFilter'
 import BoardGrid from '@/components/boards/BoardGrid'
 import CreateBoardModal from '@/components/boards/CreateBoardModal'
 import { useBoards } from '@/context/BoardsContext'
+import { useUser } from '@/context/UserContext'
 import { RECENT_COUNT } from '@/data/categories'
 
 export default function BoardsPage() {
   const { boards, createBoard, deleteBoard } = useBoards()
+  const { user, isLoggedIn } = useUser()
+  const navigate = useNavigate()
 
   const [searchQuery, setSearchQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState('all')
@@ -26,8 +30,8 @@ export default function BoardsPage() {
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
         .slice(0, RECENT_COUNT)
     } else if (activeCategory === 'mine') {
-      // "My Boards" is a stretch placeholder — no auth yet, so show nothing.
-      result = []
+      // "My Boards" — only the current user's boards (empty for guests).
+      result = user ? result.filter((b) => b.userId === user.id) : []
     } else if (activeCategory !== 'all') {
       result = result.filter((b) => b.category === activeCategory)
     }
@@ -38,7 +42,16 @@ export default function BoardsPage() {
     }
 
     return result
-  }, [boards, activeCategory, searchQuery])
+  }, [boards, activeCategory, searchQuery, user])
+
+  // Creating a board requires login; guests are sent to the login page.
+  const handleCreateClick = () => {
+    if (!isLoggedIn) {
+      navigate('/login')
+      return
+    }
+    setIsModalOpen(true)
+  }
 
   return (
     <>
@@ -53,7 +66,7 @@ export default function BoardsPage() {
             encouragement, and appreciation.
           </p>
           <div className="mt-6 flex justify-center">
-            <Button size="lg" className="gap-2" onClick={() => setIsModalOpen(true)}>
+            <Button size="lg" className="gap-2" onClick={handleCreateClick}>
               <Plus className="size-5" />
               Create a Board
             </Button>
@@ -71,9 +84,9 @@ export default function BoardsPage() {
           <CategoryFilter active={activeCategory} onChange={setActiveCategory} />
         </div>
 
-        {activeCategory === 'mine' && (
+        {activeCategory === 'mine' && !isLoggedIn && (
           <p className="mt-6 rounded-lg border border-dashed bg-muted/40 p-4 text-center text-sm text-muted-foreground">
-            “My Boards” filters to your own boards once user accounts are added.
+            Log in to see the boards you’ve created.
           </p>
         )}
 
