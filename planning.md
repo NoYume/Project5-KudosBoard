@@ -129,7 +129,16 @@ App
 - **`CommentsModal`** — pop-up showing a card's message, gif, author, and its comments, plus a form to add
   a comment. Props: `card`, `comments`, `isOpen`, `onClose()`, `onAddComment(body, author)`.
 - **`ThemeToggle`** — light/dark toggle shown in the Header. Props: `theme`, `onToggle()`.
-- **`Login` / `Signup`** — auth forms. Props: `onSubmit(credentials)`.
+- **`UserProvider`** _(implemented)_ — context provider (`src/context/UserContext.jsx`) wrapping the app in
+  `App.jsx` (inside `ThemeProvider`, outside `BoardsProvider`). Holds `user` + `token`; exposes
+  `login`, `signup`, `logout`, `isLoggedIn`. Validates a persisted token via `GET /auth/me` on mount.
+  Consumed via the `useUser()` hook.
+- **`LoginPage` / `SignupPage`** _(implemented)_ — routed auth pages at `/login` and `/signup`
+  (`src/pages/`). Controlled username/password forms using `useUser()`; redirect to `/` on success and show
+  the backend's error message on failure. Built with the existing shadcn `Card`/`Input`/`Label`/`Button`.
+  These **replaced the earlier visual-only `AuthModal`, which has been removed.**
+- **`Header`** _(updated)_ — now reflects auth state: logged in → "Welcome, {username}" + Log Out; logged
+  out → Log In / Sign Up links.
 
 ---
 
@@ -206,8 +215,27 @@ App
 - **`GET /cards/:id/comments`** → `200 OK` → `Comment[]`.
 - **`POST /cards/:id/comments`** — body: `message` (required), `author` (optional) → `201 Created` → `Comment`.
 - **`PATCH /cards/:id/pin`** — toggles pin status → `200 OK` → updated `Card`.
-- **`POST /auth/signup`** — body: `username`, `password` → `201 Created` → `User` (no password).
-- **`POST /auth/login`** — body: `username`, `password` → `200 OK` → session/token.
+
+#### Auth _(implemented — JWT)_
+
+Tokens are returned on signup/login and stored client-side in `localStorage` (`kudos-token`). The frontend's
+`request()` helper attaches `Authorization: Bearer <token>` to every call. No cookies → no CORS `credentials`
+change needed.
+
+- **`POST /auth/signup`** — body: `username`, `password` → `201 Created` → `{ token, user }` (user has no
+  password). `400` missing fields, `409` username taken.
+- **`POST /auth/login`** — body: `username`, `password` → `200 OK` → `{ token, user }`. `401` invalid credentials.
+- **`GET /auth/me`** — requires `Authorization` header → `200 OK` → `{ user }`. `401` if missing/invalid token.
+
+#### Ownership changes to existing endpoints _(implemented)_
+
+- **`POST /boards`** — now **requires auth** (`requireAuth`). `author` + `userId` are set from the token;
+  the client no longer sends `author`. `401` if not logged in.
+- **`DELETE /boards/:id`** — now **requires auth**; returns `403` if the board is owned by another user.
+  Legacy/guest boards (`userId === null`) remain deletable by anyone.
+- **`GET /boards?mine=true`** — with a valid token, returns only that user's boards; guests get `[]`.
+- **`POST /boards/:boardId/cards`** — stays **open to guests** (`attachUser`); sets `userId` when logged in,
+  otherwise null. Anonymous cards still allowed (req.md).
 
 ### Standard Error Shape
 
@@ -255,8 +283,13 @@ App
 
 - **`Comment`** — `id` (Int, PK), `message` (String, required), `author` (String, optional),
   `cardId` (Int, FK → Card, `onDelete: Cascade`), `createdAt` (DateTime, `@default(now())`).
-- **`User`** — `id` (Int, PK), `username` (String, required, unique), `password` (String, hashed,
-  required). Add optional `userId` FKs on `Board` and `Card` so guest/anonymous content is still allowed.
+- **`User`** _(implemented)_ — `id` (Int, PK), `username` (String, required, unique), `password` (String,
+  bcrypt-hashed, required), `createdAt` (DateTime, `@default(now())`), plus `boards` / `cards` relations.
+  Optional `userId Int?` FKs were added to **`Board`** and **`Card`** (`user User? @relation(...)`) so
+  guest/anonymous content is still allowed (a null `userId` means no owner). The existing free-text `author`
+  String is **kept** for display (and for guest attribution); it is not replaced by the FK. **`Comment` was
+  deliberately left without a `userId`** — no requirement needs comment ownership, so the surface area wasn't
+  expanded. Migration: `add_user_auth`.
 
 ---
 
@@ -282,8 +315,16 @@ App
 > Add when adopting the corresponding stretch feature.
 
 - **`theme`** — `"light" | "dark"`, initial `"light"`, owned by **App** (provided via context, persisted to localStorage). Updated on: user clicks the theme toggle.
-- **`currentUser`** — `User | null`, initial `null`, owned by **App** (auth context). Updated on: login/logout.
+- **`user`** _(implemented)_ — `User | null`, initial `null`, owned by **UserProvider** (`src/context/UserContext.jsx`).
+  Updated on: login/signup (set), logout (cleared), and once on mount from `GET /auth/me` if a token exists.
+- **`token`** _(implemented)_ — `string | null`, initial read from `localStorage['kudos-token']`, owned by
+  **UserProvider**. Persisted to localStorage on login/signup, removed on logout or when `/auth/me` rejects
+  (401 → auto-logout). The `api.js` `request()` helper reads it to attach `Authorization: Bearer <token>`.
 - **`comments`** — `Comment[]`, initial `[]`, owned by **CommentsModal/KudosCard**. Updated on: fetch; add comment.
+
+**Auth security note:** the JWT lives in `localStorage` (readable by XSS — accepted trade-off for this project),
+signed with a 7-day expiry. Because the token travels in the `Authorization` header rather than a cookie, no CORS
+`credentials` configuration is required. Any `401` from `/auth/me` clears the stored token and logs the user out.
 
 ---
 
