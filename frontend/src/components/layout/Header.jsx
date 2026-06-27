@@ -1,12 +1,17 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { PartyPopper, User } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { LogOut, PartyPopper, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import ThemeToggle from '@/components/theme/ThemeToggle'
-import AuthModal from '@/components/auth/AuthModal'
+import { useUser } from '@/context/UserContext'
 
 export default function Header() {
-  const [authOpen, setAuthOpen] = useState(false)
+  const { isLoggedIn, user, logout } = useUser()
+  const navigate = useNavigate()
+
+  const handleLogout = () => {
+    logout()
+    navigate('/')
+  }
 
   return (
     <header className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur">
@@ -16,21 +21,33 @@ export default function Header() {
           <span className="text-lg tracking-tight">Kudos Board</span>
         </Link>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <ThemeToggle />
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            onClick={() => setAuthOpen(true)}
-          >
-            <User className="size-4" />
-            <span className="hidden sm:inline">Log In</span>
-          </Button>
+          {isLoggedIn ? (
+            <>
+              <span className="hidden text-sm text-muted-foreground sm:inline">
+                Welcome, <span className="font-medium text-foreground">{user.username}</span>
+              </span>
+              <Button variant="outline" size="sm" className="gap-2" onClick={handleLogout}>
+                <LogOut className="size-4" />
+                <span className="hidden sm:inline">Log Out</span>
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button asChild variant="ghost" size="sm">
+                <Link to="/login">Log In</Link>
+              </Button>
+              <Button asChild size="sm" className="gap-2">
+                <Link to="/signup">
+                  <User className="size-4" />
+                  <span className="hidden sm:inline">Sign Up</span>
+                </Link>
+              </Button>
+            </>
+          )}
         </div>
       </div>
-
-      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
     </header>
   )
 }
