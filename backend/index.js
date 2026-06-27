@@ -4,6 +4,7 @@ const cors = require("cors");
 
 const boardRoutes = require("./routes/boardRoutes");
 const cardRoutes = require("./routes/cardRoutes");
+const authRoutes = require("./routes/authRoutes");
 
 const app = express();
 
@@ -17,6 +18,7 @@ app.get("/", (req, res) => {
   res.json({ status: "ok", service: "Kudos Board API" });
 });
 
+app.use("/auth", authRoutes);
 app.use("/boards", boardRoutes);
 app.use("/cards", cardRoutes);
 
