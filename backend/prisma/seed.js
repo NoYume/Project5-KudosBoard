@@ -1,13 +1,25 @@
 require("dotenv/config");
+const bcrypt = require("bcrypt");
 const prisma = require("../lib/prisma");
 
-// Sample boards, each with a few cards, to demo the app.
+// Demo accounts. All share the same password for easy local testing.
+// `owner` maps each board below to one of these usernames.
+const DEMO_PASSWORD = "password123";
+const users = [
+  { username: "della" },
+  { username: "marcus" },
+  { username: "sam" },
+];
+
+// Sample boards, each with a few cards, to demo the app. `owner` is the
+// username of the demo user who owns the board (used for owner-only delete).
 const boards = [
   {
     title: "Project Launch Celebration",
     category: "celebration",
     imageUrl: "https://picsum.photos/seed/launch/400/300",
     author: "Della",
+    owner: "della",
     cards: [
       {
         message: "We shipped on time — amazing teamwork!",
@@ -28,6 +40,7 @@ const boards = [
     category: "thank-you",
     imageUrl: "https://picsum.photos/seed/thanks/400/300",
     author: "Marcus",
+    owner: "marcus",
     cards: [
       {
         message: "Thanks for staying late to unblock the deploy 🙏",
@@ -46,6 +59,8 @@ const boards = [
     title: "Daily Inspiration",
     category: "inspiration",
     imageUrl: "https://picsum.photos/seed/inspire/400/300",
+    author: "Sam",
+    owner: "sam",
     cards: [
       {
         message: "Done is better than perfect. Keep shipping!",
@@ -60,6 +75,7 @@ const boards = [
     category: "celebration",
     imageUrl: "https://picsum.photos/seed/q2/400/300",
     author: "Sam",
+    owner: "sam",
     cards: [],
   },
 ];
@@ -68,21 +84,36 @@ async function main() {
   // Start clean so re-seeding is idempotent. TRUNCATE ... RESTART IDENTITY
   // also resets the autoincrement sequences so IDs start back at 1.
   await prisma.$executeRawUnsafe(
-    'TRUNCATE "Card", "Board" RESTART IDENTITY CASCADE;'
+    'TRUNCATE "Card", "Board", "User" RESTART IDENTITY CASCADE;'
   );
 
-  for (const { cards, ...board } of boards) {
+  // Create demo users (all share DEMO_PASSWORD) and map username -> id.
+  const hashed = await bcrypt.hash(DEMO_PASSWORD, 10);
+  const userIdByName = {};
+  for (const { username } of users) {
+    const user = await prisma.user.create({
+      data: { username, password: hashed },
+    });
+    userIdByName[username] = user.id;
+  }
+
+  for (const { cards, owner, ...board } of boards) {
     await prisma.board.create({
       data: {
         ...board,
+        userId: owner ? userIdByName[owner] : null,
         cards: { create: cards },
       },
     });
   }
 
+  const userCount = await prisma.user.count();
   const boardCount = await prisma.board.count();
   const cardCount = await prisma.card.count();
-  console.log(`Seeded ${boardCount} boards and ${cardCount} cards.`);
+  console.log(
+    `Seeded ${userCount} users, ${boardCount} boards and ${cardCount} cards.`
+  );
+  console.log(`Demo login — username: della / password: ${DEMO_PASSWORD}`);
 }
 
 main()
