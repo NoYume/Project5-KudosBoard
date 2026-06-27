@@ -6,7 +6,7 @@ const VALID_CATEGORIES = ["celebration", "thank-you", "inspiration"];
 // GET /boards — list boards, with optional category filter and title search.
 async function getBoards(req, res) {
   try {
-    const { category, search } = req.query;
+    const { category, search, mine } = req.query;
 
     const where = {};
     if (search) {
@@ -14,6 +14,14 @@ async function getBoards(req, res) {
     }
     if (category && category !== "all" && category !== "recent") {
       where.category = category;
+    }
+
+    // "My Boards" filter — only the authenticated user's boards. Guests get [].
+    if (mine === "true") {
+      if (!req.userId) {
+        return res.status(200).json([]);
+      }
+      where.userId = req.userId;
     }
 
     // "recent" returns the 6 most recently created boards.
@@ -53,10 +61,10 @@ async function getBoardById(req, res) {
   }
 }
 
-// POST /boards — create a board.
+// POST /boards — create a board (requires auth; owner = current user).
 async function createBoard(req, res) {
   try {
-    const { title, category, imageUrl, author } = req.body;
+    const { title, category, imageUrl } = req.body;
 
     if (!title || !category || !imageUrl) {
       return res
@@ -69,8 +77,15 @@ async function createBoard(req, res) {
       });
     }
 
+    // Ownership and display author both come from the authenticated user.
     const board = await prisma.board.create({
-      data: { title, category, imageUrl, author: author || null },
+      data: {
+        title,
+        category,
+        imageUrl,
+        author: req.username || null,
+        userId: req.userId,
+      },
     });
     res.status(201).json(board);
   } catch (err) {
@@ -85,6 +100,11 @@ async function deleteBoard(req, res) {
     const board = await prisma.board.findUnique({ where: { id } });
     if (!board) {
       return res.status(404).json({ error: "Board not found" });
+    }
+    // Owned boards can only be deleted by their owner. Legacy/guest boards
+    // (userId === null) have no owner, so anyone may delete them.
+    if (board.userId !== null && board.userId !== req.userId) {
+      return res.status(403).json({ error: "You do not own this board" });
     }
     const deleted = await prisma.board.delete({ where: { id } });
     res.status(200).json(deleted);

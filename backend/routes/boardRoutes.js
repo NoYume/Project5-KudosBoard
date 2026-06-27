@@ -9,17 +9,18 @@ const {
   getCardsByBoard,
   createCard,
 } = require("../controllers/cardController");
+const { requireAuth, attachUser } = require("../middleware/auth");
 
 // Mounted at /boards
 const router = express.Router();
 
-router.get("/", getBoards);
-router.post("/", createBoard);
+router.get("/", attachUser, getBoards); // attachUser enables the ?mine=true filter
+router.post("/", requireAuth, createBoard);
 router.get("/:id", getBoardById);
-router.delete("/:id", deleteBoard);
+router.delete("/:id", requireAuth, deleteBoard);
 
 // Cards nested under a board.
 router.get("/:boardId/cards", getCardsByBoard);
-router.post("/:boardId/cards", createCard);
+router.post("/:boardId/cards", attachUser, createCard); // guest-friendly
 
 module.exports = router;
