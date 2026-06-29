@@ -18,4 +18,21 @@ export default defineConfig([
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
   },
+  {
+    // shadcn/ui primitives are generated, copy-paste components. They import
+    // React for typing and co-export CVA variants alongside the component —
+    // both are intentional, so relax the two rules that flag them here.
+    files: ['src/components/ui/**/*.{js,jsx}'],
+    rules: {
+      'no-unused-vars': ['error', { varsIgnorePattern: '^React$' }],
+      'react-refresh/only-export-components': 'off',
+    },
+  },
+  {
+    // Context modules intentionally export a provider component plus a hook.
+    files: ['src/context/**/*.jsx'],
+    rules: {
+      'react-refresh/only-export-components': ['warn', { allowExportNames: ['useBoards', 'useTheme'] }],
+    },
+  },
 ])
