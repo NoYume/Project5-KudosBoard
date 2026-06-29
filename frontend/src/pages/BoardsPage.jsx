@@ -14,29 +14,17 @@ export default function BoardsPage() {
   const { boards, createBoard, deleteBoard } = useBoards()
   const { user, isLoggedIn } = useUser()
   const navigate = useNavigate()
-import { useMemo, useState } from "react";
-import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import SearchBar from "@/components/boards/SearchBar";
-import CategoryFilter from "@/components/boards/CategoryFilter";
-import BoardGrid from "@/components/boards/BoardGrid";
-import CreateBoardModal from "@/components/boards/CreateBoardModal";
-import { useBoards } from "@/context/BoardsContext";
-import { RECENT_COUNT } from "@/data/categories";
 
-export default function BoardsPage() {
-  const { boards, createBoard, deleteBoard } = useBoards();
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [activeCategory, setActiveCategory] = useState("all");
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeCategory, setActiveCategory] = useState('all')
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   // The boards shown in the grid are DERIVED from boards + category + search —
   // there is no separate filteredBoards state variable.
   const visibleBoards = useMemo(() => {
-    let result = [...boards];
+    let result = [...boards]
 
-    if (activeCategory === "recent") {
+    if (activeCategory === 'recent') {
       result = result
         .slice()
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
@@ -46,17 +34,11 @@ export default function BoardsPage() {
       result = user ? result.filter((b) => b.userId === user.id) : []
     } else if (activeCategory !== 'all') {
       result = result.filter((b) => b.category === activeCategory)
-        .slice(0, RECENT_COUNT);
-    } else if (activeCategory === "mine") {
-      // "My Boards" is a stretch placeholder — no auth yet, so show nothing.
-      result = [];
-    } else if (activeCategory !== "all") {
-      result = result.filter((b) => b.category === activeCategory);
     }
 
     if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter((b) => b.title.toLowerCase().includes(q));
+      const q = searchQuery.toLowerCase()
+      result = result.filter((b) => b.title.toLowerCase().includes(q))
     }
 
     return result
@@ -70,8 +52,6 @@ export default function BoardsPage() {
     }
     setIsModalOpen(true)
   }
-    return result;
-  }, [boards, activeCategory, searchQuery]);
 
   return (
     <>
@@ -87,11 +67,6 @@ export default function BoardsPage() {
           </p>
           <div className="mt-6 flex justify-center">
             <Button size="lg" className="gap-2" onClick={handleCreateClick}>
-            <Button
-              size="lg"
-              className="gap-2"
-              onClick={() => setIsModalOpen(true)}
-            >
               <Plus className="size-5" />
               Create a Board
             </Button>
@@ -104,11 +79,7 @@ export default function BoardsPage() {
           <SearchBar
             query={searchQuery}
             onSearch={setSearchQuery}
-            onClear={() => setSearchQuery("")}
-          />
-          <CategoryFilter
-            active={activeCategory}
-            onChange={setActiveCategory}
+            onClear={() => setSearchQuery('')}
           />
           <CategoryFilter
             active={activeCategory}
@@ -117,11 +88,9 @@ export default function BoardsPage() {
           />
         </div>
 
-        </div>
-
-        {activeCategory === "mine" && (
+        {activeCategory === 'mine' && !isLoggedIn && (
           <p className="mt-6 rounded-lg border border-dashed bg-muted/40 p-4 text-center text-sm text-muted-foreground">
-            “My Boards” filters to your own boards once user accounts are added.
+            “My Boards” filters to your own boards once you log in.
           </p>
         )}
 
@@ -136,5 +105,5 @@ export default function BoardsPage() {
         onCreate={createBoard}
       />
     </>
-  );
+  )
 }
