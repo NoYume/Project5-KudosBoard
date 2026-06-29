@@ -6,9 +6,9 @@ const prisma = require("../lib/prisma");
 // `owner` maps each board below to one of these usernames.
 const DEMO_PASSWORD = "password123";
 const users = [
-  { username: "della" },
-  { username: "marcus" },
-  { username: "sam" },
+  { username: "della", email: "della@example.com" },
+  { username: "marcus", email: "marcus@example.com" },
+  { username: "sam", email: "sam@example.com" },
 ];
 
 // Sample boards, each with a few cards, to demo the app. `owner` is the
@@ -90,9 +90,9 @@ async function main() {
   // Create demo users (all share DEMO_PASSWORD) and map username -> id.
   const hashed = await bcrypt.hash(DEMO_PASSWORD, 10);
   const userIdByName = {};
-  for (const { username } of users) {
+  for (const { username, email } of users) {
     const user = await prisma.user.create({
-      data: { username, password: hashed },
+      data: { username, email, password: hashed },
     });
     userIdByName[username] = user.id;
   }

@@ -5,6 +5,9 @@ const { JWT_SECRET } = require("../middleware/auth");
 
 const TOKEN_TTL = "7d";
 const SALT_ROUNDS = 10;
+const MIN_PASSWORD_LENGTH = 8;
+// Pragmatic email check — must look like name@domain.tld.
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Sign a token carrying the user's id and username (so middleware can set both
 // without a DB round-trip on every request).
@@ -16,27 +19,45 @@ function signToken(user) {
 
 // Strip the password hash before returning a user to the client.
 function publicUser(user) {
-  return { id: user.id, username: user.username, createdAt: user.createdAt };
+  return {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    createdAt: user.createdAt,
+  };
 }
 
 // POST /auth/signup — create an account and return a token.
 async function signup(req, res) {
   try {
-    const { username, password } = req.body || {};
-    if (!username || !password) {
+    const { username, email, password } = req.body || {};
+    if (!username || !email || !password) {
       return res
         .status(400)
-        .json({ error: "Username and password are required" });
+        .json({ error: "Username, email, and password are required" });
+    }
+    if (!EMAIL_REGEX.test(email)) {
+      return res.status(400).json({ error: "Please enter a valid email" });
+    }
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({
+        error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters`,
+      });
     }
 
-    const existing = await prisma.user.findUnique({ where: { username } });
+    const normalizedEmail = email.toLowerCase();
+    // Reject if either the username or email is already in use.
+    const existing = await prisma.user.findFirst({
+      where: { OR: [{ username }, { email: normalizedEmail }] },
+    });
     if (existing) {
-      return res.status(409).json({ error: "Username already taken" });
+      const field = existing.username === username ? "Username" : "Email";
+      return res.status(409).json({ error: `${field} already taken` });
     }
 
     const hashed = await bcrypt.hash(password, SALT_ROUNDS);
     const user = await prisma.user.create({
-      data: { username, password: hashed },
+      data: { username, email: normalizedEmail, password: hashed },
     });
     res.status(201).json({ token: signToken(user), user: publicUser(user) });
   } catch (err) {
@@ -44,17 +65,23 @@ async function signup(req, res) {
   }
 }
 
-// POST /auth/login — verify credentials and return a token.
+// POST /auth/login — verify credentials and return a token. The `identifier`
+// may be either a username or an email address.
 async function login(req, res) {
   try {
-    const { username, password } = req.body || {};
-    if (!username || !password) {
+    const { identifier, password } = req.body || {};
+    if (!identifier || !password) {
       return res
         .status(400)
-        .json({ error: "Username and password are required" });
+        .json({ error: "Username/email and password are required" });
     }
 
-    const user = await prisma.user.findUnique({ where: { username } });
+    // Look the user up by username OR email (email match is case-insensitive).
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [{ username: identifier }, { email: identifier.toLowerCase() }],
+      },
+    });
     if (!user) {
       return res.status(401).json({ error: "Invalid credentials" });
     }

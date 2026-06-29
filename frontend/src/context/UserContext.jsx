@@ -41,17 +41,22 @@ export function UserProvider({ children }) {
     setUser(usr)
   }, [])
 
+  // `identifier` may be a username or an email address.
   const login = useCallback(
-    async (username, password) => {
-      const { token: tok, user: usr } = await api.login({ username, password })
+    async (identifier, password) => {
+      const { token: tok, user: usr } = await api.login({ identifier, password })
       persist(tok, usr)
     },
     [persist],
   )
 
   const signup = useCallback(
-    async (username, password) => {
-      const { token: tok, user: usr } = await api.signup({ username, password })
+    async (username, email, password) => {
+      const { token: tok, user: usr } = await api.signup({
+        username,
+        email,
+        password,
+      })
       persist(tok, usr)
     },
     [persist],
