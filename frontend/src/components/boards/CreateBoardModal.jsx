@@ -19,7 +19,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { CATEGORIES } from '@/data/categories'
 
-const EMPTY = { title: '', category: '', imageUrl: '', author: '' }
+const EMPTY = { title: '', category: '', imageUrl: '' }
 
 export default function CreateBoardModal({ open, onOpenChange, onCreate }) {
   const [form, setForm] = useState(EMPTY)
@@ -46,7 +46,6 @@ export default function CreateBoardModal({ open, onOpenChange, onCreate }) {
       title: form.title.trim(),
       category: form.category,
       imageUrl: form.imageUrl.trim(),
-      author: form.author,
     })
     handleClose(false)
   }
@@ -115,16 +114,6 @@ export default function CreateBoardModal({ open, onOpenChange, onCreate }) {
               aria-invalid={!!errors.imageUrl}
             />
             {errors.imageUrl && <p className="text-sm text-destructive">{errors.imageUrl}</p>}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="board-author">Author (optional)</Label>
-            <Input
-              id="board-author"
-              value={form.author}
-              onChange={(e) => setField('author')(e.target.value)}
-              placeholder="Your name"
-            />
           </div>
 
           <DialogFooter>

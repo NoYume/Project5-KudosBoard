@@ -3,11 +3,16 @@ import { Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { categoryLabel } from '@/data/categories'
+import { useUser } from '@/context/UserContext'
 
 // Blog-post-card style (UI Thing "Blog post card 3" → shadcn): rounded card,
 // image on top, category badge, title, optional author, with a hover lift.
 export default function BoardCard({ board, onDelete }) {
   const navigate = useNavigate()
+  const { user } = useUser()
+  // Only the owner may delete an owned board. (Legacy null-owner boards are
+  // deletable by the API, but we hide the control to keep ownership clear.)
+  const canDelete = Boolean(user) && board.userId === user.id
 
   return (
     <article className="group flex flex-col overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
@@ -38,15 +43,17 @@ export default function BoardCard({ board, onDelete }) {
           <Button asChild variant="link" className="h-auto p-0">
             <Link to={`/boards/${board.id}`}>View Board →</Link>
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onDelete(board.id)}
-            aria-label={`Delete ${board.title}`}
-            className="text-muted-foreground hover:text-destructive"
-          >
-            <Trash2 className="size-4" />
-          </Button>
+          {canDelete && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onDelete(board.id)}
+              aria-label={`Delete ${board.title}`}
+              className="text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          )}
         </div>
       </div>
     </article>

@@ -2,8 +2,15 @@ import { ArrowBigUp, MessageCircle, Pin, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useUser } from '@/context/UserContext'
 
 export default function KudosCard({ card, onUpvote, onDelete, onTogglePin, onOpenComments }) {
+  const { user } = useUser()
+  // Only the owner may delete an owned card. (Legacy null-owner cards are
+  // deletable by any logged-in user via the API, but we hide the control to
+  // keep ownership clear.)
+  const canDelete = Boolean(user) && card.userId === user.id
+
   return (
     <article
       className={cn(
@@ -70,15 +77,17 @@ export default function KudosCard({ card, onUpvote, onDelete, onTogglePin, onOpe
             <MessageCircle className="size-4" />
             {card.comments.length}
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onDelete(card.id)}
-            aria-label="Delete card"
-            className="text-muted-foreground hover:text-destructive"
-          >
-            <Trash2 className="size-4" />
-          </Button>
+          {canDelete && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onDelete(card.id)}
+              aria-label="Delete card"
+              className="text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          )}
         </div>
       </div>
     </article>

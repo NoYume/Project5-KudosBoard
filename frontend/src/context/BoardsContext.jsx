@@ -29,13 +29,9 @@ export function BoardsProvider({ children }) {
     }
   }, [])
 
-  const createBoard = useCallback(async ({ title, category, imageUrl, author }) => {
-    const board = await api.createBoard({
-      title,
-      category,
-      imageUrl,
-      author: author?.trim() ? author.trim() : null,
-    })
+  const createBoard = useCallback(async ({ title, category, imageUrl }) => {
+    // Author/ownership are derived server-side from the authenticated user.
+    const board = await api.createBoard({ title, category, imageUrl })
     setBoards((prev) => [board, ...prev])
     setCardsByBoard((prev) => ({ ...prev, [board.id]: [] }))
     return board

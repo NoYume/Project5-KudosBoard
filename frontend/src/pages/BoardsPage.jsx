@@ -1,3 +1,19 @@
+import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Plus } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import SearchBar from '@/components/boards/SearchBar'
+import CategoryFilter from '@/components/boards/CategoryFilter'
+import BoardGrid from '@/components/boards/BoardGrid'
+import CreateBoardModal from '@/components/boards/CreateBoardModal'
+import { useBoards } from '@/context/BoardsContext'
+import { useUser } from '@/context/UserContext'
+import { RECENT_COUNT } from '@/data/categories'
+
+export default function BoardsPage() {
+  const { boards, createBoard, deleteBoard } = useBoards()
+  const { user, isLoggedIn } = useUser()
+  const navigate = useNavigate()
 import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,6 +40,12 @@ export default function BoardsPage() {
       result = result
         .slice()
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, RECENT_COUNT)
+    } else if (activeCategory === 'mine') {
+      // "My Boards" — only the current user's boards (empty for guests).
+      result = user ? result.filter((b) => b.userId === user.id) : []
+    } else if (activeCategory !== 'all') {
+      result = result.filter((b) => b.category === activeCategory)
         .slice(0, RECENT_COUNT);
     } else if (activeCategory === "mine") {
       // "My Boards" is a stretch placeholder — no auth yet, so show nothing.
@@ -37,6 +59,17 @@ export default function BoardsPage() {
       result = result.filter((b) => b.title.toLowerCase().includes(q));
     }
 
+    return result
+  }, [boards, activeCategory, searchQuery, user])
+
+  // Creating a board requires login; guests are sent to the login page.
+  const handleCreateClick = () => {
+    if (!isLoggedIn) {
+      navigate('/login')
+      return
+    }
+    setIsModalOpen(true)
+  }
     return result;
   }, [boards, activeCategory, searchQuery]);
 
@@ -53,6 +86,7 @@ export default function BoardsPage() {
             encouragement, and appreciation!
           </p>
           <div className="mt-6 flex justify-center">
+            <Button size="lg" className="gap-2" onClick={handleCreateClick}>
             <Button
               size="lg"
               className="gap-2"
@@ -76,6 +110,13 @@ export default function BoardsPage() {
             active={activeCategory}
             onChange={setActiveCategory}
           />
+          <CategoryFilter
+            active={activeCategory}
+            onChange={setActiveCategory}
+            showMine={isLoggedIn}
+          />
+        </div>
+
         </div>
 
         {activeCategory === "mine" && (

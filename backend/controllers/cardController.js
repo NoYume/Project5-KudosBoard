@@ -36,8 +36,16 @@ async function createCard(req, res) {
       return res.status(404).json({ error: "Board not found" });
     }
 
+    // Cards are guest-friendly: attach an owner only when logged in (set by
+    // the attachUser middleware), otherwise userId stays null.
     const card = await prisma.card.create({
-      data: { message, gifUrl, author: author || null, boardId },
+      data: {
+        message,
+        gifUrl,
+        author: author || null,
+        boardId,
+        userId: req.userId || null,
+      },
       include: { comments: true },
     });
     res.status(201).json(card);
@@ -65,13 +73,18 @@ async function upvoteCard(req, res) {
   }
 }
 
-// DELETE /cards/:id — delete a card.
+// DELETE /cards/:id — delete a card (requires auth; owner-only).
 async function deleteCard(req, res) {
   try {
     const id = Number(req.params.id);
     const card = await prisma.card.findUnique({ where: { id } });
     if (!card) {
       return res.status(404).json({ error: "Card not found" });
+    }
+    // Owned cards can only be deleted by their owner. Legacy/guest cards
+    // (userId === null) have no owner, so any logged-in user may delete them.
+    if (card.userId !== null && card.userId !== req.userId) {
+      return res.status(403).json({ error: "You do not own this card" });
     }
     const deleted = await prisma.card.delete({ where: { id } });
     res.status(200).json(deleted);

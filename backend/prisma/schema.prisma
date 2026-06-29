@@ -12,12 +12,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  boards    Board[]
+  cards     Card[]
+}
+
 model Board {
   id        Int      @id @default(autoincrement())
   title     String
   category  String
   imageUrl  String
   author    String?
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
   cards     Card[]
 }
@@ -32,6 +44,8 @@ model Card {
   pinnedAt  DateTime?
   boardId   Int
   board     Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  userId    Int?
+  user      User?     @relation(fields: [userId], references: [id])
   comments  Comment[]
   createdAt DateTime  @default(now())
 }
