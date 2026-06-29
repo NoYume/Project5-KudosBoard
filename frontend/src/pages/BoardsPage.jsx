@@ -81,14 +81,12 @@ export default function BoardsPage() {
             onSearch={setSearchQuery}
             onClear={() => setSearchQuery('')}
           />
-          <CategoryFilter active={activeCategory} onChange={setActiveCategory} />
+          <CategoryFilter
+            active={activeCategory}
+            onChange={setActiveCategory}
+            showMine={isLoggedIn}
+          />
         </div>
-
-        {activeCategory === 'mine' && !isLoggedIn && (
-          <p className="mt-6 rounded-lg border border-dashed bg-muted/40 p-4 text-center text-sm text-muted-foreground">
-            Log in to see the boards you’ve created.
-          </p>
-        )}
 
         <div className="mt-8">
           <BoardGrid boards={visibleBoards} onDeleteBoard={deleteBoard} />

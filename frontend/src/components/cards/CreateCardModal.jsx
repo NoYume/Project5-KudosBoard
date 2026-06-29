@@ -12,10 +12,15 @@ import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import GiphySearch from '@/components/cards/GiphySearch'
+import { useUser } from '@/context/UserContext'
 
 const EMPTY = { message: '', gifUrl: '', author: '' }
 
+// Guests post under a friendly default name instead of an empty author.
+const GUEST_AUTHOR = 'Guest'
+
 export default function CreateCardModal({ open, onOpenChange, onCreate }) {
+  const { user } = useUser()
   const [form, setForm] = useState(EMPTY)
   const [errors, setErrors] = useState({})
 
@@ -30,10 +35,12 @@ export default function CreateCardModal({ open, onOpenChange, onCreate }) {
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!validate()) return
+    // Use the typed name, else the logged-in username, else "Guest".
+    const author = form.author.trim() || user?.username || GUEST_AUTHOR
     onCreate({
       message: form.message.trim(),
       gifUrl: form.gifUrl,
-      author: form.author,
+      author,
     })
     handleClose(false)
   }
@@ -95,7 +102,7 @@ export default function CreateCardModal({ open, onOpenChange, onCreate }) {
               id="card-author"
               value={form.author}
               onChange={(e) => setForm((p) => ({ ...p, author: e.target.value }))}
-              placeholder="Your name"
+              placeholder={user?.username ?? 'Guest'}
             />
           </div>
 
