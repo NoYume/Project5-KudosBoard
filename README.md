@@ -1,5 +1,3 @@
-📝 `NOTE` Use this template to initialize the contents of a README.md file for your application. As you work on your assignment over the course of the week, update the required or stretch features lists to indicate which features you have completed by changing `[ ]` to `[x]`. (🚫 Remove this paragraph before submitting your assignment.)
-
 ## Unit Assignment: Kudos Board
 
 Submitted by: **Della Lee, Daniel Lam, Miguel Cuevas, Audrey Dequito**
@@ -143,9 +141,7 @@ Deployed Application (optional): [Kudos Board Deployed Site](https://project5-ku
 
 ### Walkthrough Video
 
-`TODO://` Paste the **shareable link** to your animated app walkthrough below (replace `ADD_LOOM_LINK_HERE`). GitHub markdown won't render an embedded Loom player, so a plain link is what graders will use. Make sure the link is public and playable before submitting. Ensure your walkthrough showcases the presence and/or functionality of all features you implemented above (check them off as you film!). Pay attention to any **VIDEO WALKTHROUGH SPECIAL INSTRUCTIONS** checkboxes listed above to ensure graders see the full functionality of your website. (🚫 Remove this paragraph after adding your walkthrough link.)
-
-**Walkthrough video:** [Kudos Board Walkthrough](ADD_LOOM_LINK_HERE)
+**Walkthrough video:** [Kudos Board Walkthrough](https://www.loom.com/share/18b4710d3c9e4def8f95b919c549f108)
 
 ### Reflection
 
