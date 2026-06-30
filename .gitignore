@@ -114,3 +114,6 @@ dist
 
 # Cursor files
 .cursor/
+
+# Claude files
+.claude/
